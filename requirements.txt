@@ -1,6 +1,6 @@
 gunicorn
 flask
-threading
+Thread
 os
 apscheduler
 datetime
