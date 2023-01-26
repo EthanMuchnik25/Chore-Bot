@@ -1,5 +1,6 @@
 import os
 import discord
+from keep_alive import keep_alive
 from collections import deque
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -89,6 +90,6 @@ async def on_message(message):
           "($add <tag user>) to add users | ($delete) deletes everyone from the queue"
         )
 
-
+keep_alive()
 my_secret = os.environ['DISCORD_BOT_SECRET']
 client.run(my_secret)
