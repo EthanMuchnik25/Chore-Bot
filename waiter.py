@@ -1,95 +1,188 @@
+# Import OS Module
 import os
+
+# Import Discord Module
 import discord
+
+# Import Keep Alive WebServer Function
 from keep_alive import keep_alive
-from collections import deque
+
+# Import Scheduler/Asynchrnous Execution Modules
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from discord.ext import commands
-from datetime import datetime
-from pytz import timezone
+
+# Import Gspread Module For Google Sheets Integration
+import gspread
+
+# Import Modules Related To Dates/Time
+from datetime import datetime, timedelta
+import pytz
+
+# Import Random Module
 import random
 
-# Constants
-# waiter duties channel const 1021528282446970970
-waiterDutiesChannelID = 1021528282446970970
-uploadingNamesChannelID = 1067347506171748392
-winnickUserID = 304068912033824769
-# winick user id 509535039533482007
-# Persuasive Phrases To Get People To Do Waiter Duties
-harrassmentList = [
-  "Ok, you have until the end of the day to do your goddamn dishes or else...",
-  "Do dishes or it's kneecapping time.",
-  "That was the last straw. Do your dishes you sack of shit. I know where you live.",
-  "Your free trial of life outside of waiter duties has expired.... Do. Them",
-  "I swear to god. Next time you fuck up Waiter Duties I will castrate you. I'm watching you.",
-  "When he said it was dishin time that sent chills down my spine. Anyway do dishes or I will make you watch morbius for the next 3 calender weeks."
-]
+# Constants Pertaining To Channel ID's
+waiterDutiesChannelID = Redacted
+uploadingNamesChannelID = Redacted
 
-# Queue
-queue = deque([])
+# Previous Kitchen Manager ID - Change If New Kitchen Manager
+winnickUserID = Redacted
 
-# Create Client
+sa = gspread.service_account("service_account.json")
+
+sh = sa.open('F21-S22 Waiter Duties')
+
+wks = sh.worksheet("Waiter Duties")
+
+# Dictionary Matching Andrew IDs (Used In Spreadsheet) to Discord IDs
+
+validPersonDict = {
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted,
+  'Redacted': Redacted
+}
+
+# Create client for discord API With All Perms Enabled
 client = discord.Client(intents=discord.Intents.all())
+
+# Get Channel For Waiter Duties Announcements
 announceChannel = client.get_channel(waiterDutiesChannelID)
+
+# Get Channel For Mangaement of Waiter Duties Bot
 winnickChannel = client.get_channel(uploadingNamesChannelID)
 
+# Set Timezone
+tz = pytz.timezone('America/New_York')
 
-# Notify People of Daily Waiter Duties
+weekOffset = 2  # Offset From Date To Beginning Of Names
+
+weekSize = 11  # Rows Each Week Takes Up Spreadsheet
+
+startDateRow = 5  # First Date Row in Spreadsheet
+startDateCol = 2  # First Date Col in Spreadsheet
+nameStartCol = 3  # Column Where names Start
+
+
+# Notify Relevant People of Daily Waiter Duties
 async def notifyAssignments():
-  # c = bot.get_channel(812588887200497674)
+  # Current Day
+  today = datetime.now(tz)
+  print(today)
+
+  # Weekday of Current Day
+  weekday = today.weekday()
+  print(weekday)
+
+  # Date of Beginning of Week
+  begOfWeek = today - timedelta(days=weekday)
+
+  # Date At Beginning of Spreadsheet
+  val = wks.cell(5, 2).value
+  print(val)
+
+  # Extract Datetime Object from the Value in Spreadsheet
+  begOfSpread = datetime.strptime(val, '%m/%d/%Y')
+
+  # Adjust Datetime to Correct Timezone
+  begOfSpreadTz = begOfSpread.replace(tzinfo=tz)
+  print(begOfWeek)
+  print(begOfSpreadTz)
+
+  # Get Week Difference Between Beginning of Week and First Date in Spreadsheet
+  dateDif = begOfWeek - begOfSpreadTz
+  dayDif = dateDif.days
+  weekDif = dayDif // 7
+
+  # Calculate Row Pertaining To Current Waiter Duties Assignment
+  startDateCellRow = weekDif * weekSize + startDateRow + weekOffset + weekday
+  print(startDateCellRow)
+
+  # Append Waiter Duties names to List
+  names = []
+  names.append(wks.cell(startDateCellRow, nameStartCol).value)
+  names.append(wks.cell(startDateCellRow, nameStartCol + 1).value)
+
+  # Generate Random Threat Index and ReInitialize Channel Variables
   announceChannel = client.get_channel(waiterDutiesChannelID)
   winnickChannel = client.get_channel(uploadingNamesChannelID)
-  # print(waiterDutiesChannelID)
-  random_index = random.randint(0, len(harrassmentList) - 1)
-  if queue:
+
+  # If Both Cells Are Not Ping People To Do Waiter Duties
+  if names[0] != None and names[1] != None:
     await announceChannel.send(
-      f"{queue.popleft()} {queue.popleft()} {harrassmentList[random_index]} \n"
-    )
+      f"<@{validPersonDict[names[0]]}> <@{validPersonDict[names[1]]}> \n")
+  # If One Name Is Missing, Assume misinput and Ping Kitchen Manager
+  elif (names[0] != None) ^ (names[1] != None):
+    await winnickChannel.send(
+      "<@" + str(winnickUserID) + ">" +
+      "Spreadsheet doesn't have the neccesary data in it.")
+  # If Both Inputs Blank, Assume That Was Intended and Output Nothing
   else:
-    await winnickChannel.send("<@" + str(winnickUserID) + ">" +
-                              "GOD DAMNIT. PUT THE NEW NAMES INTO THE QUEUE")
+    pass
 
 
+# Runs When Bot Turns On
 @client.event
 async def on_ready():
-  print("I'm in")
-  print(client.user)
+
+  # Initialize Schedule To Run Notify Assignments at 12 pm Est (Shifted TimeZone)
   scheduler = AsyncIOScheduler()
+  scheduler.add_job(notifyAssignments, CronTrigger(hour="16", minute="0"))
 
-  #sends "s!t" to the channel when time hits 10/20/30/40/50/60 seconds, like 12:04:20 PM
-  scheduler.add_job(notifyAssignments, CronTrigger(hour="15"))
-
-  #starting the scheduler
   scheduler.start()
-
 
 @client.event
 async def on_message(message):
-  global queue
+  # If The Message is From Kitchen Manager(waiter-duties) Channel
   if message.channel.id == uploadingNamesChannelID:
-    if (message.content.startswith('$add')):
-      mentionLen = len(message.mentions)
-      for user in message.mentions:
-        if user != client.user:
-          queue.append(user.mention)
-      await message.channel.send(f"Successfully added {mentionLen} user(s)")
-      await message.channel.send(f"The queue currently looks like this {queue}"
-                                 )
-    elif (message.content.startswith('$delete')):
-      if message.author != client.user:
-        queue = deque()
-        await message.channel.send("Successfully deleted queue")
-        await message.channel.send(
-          f"The queue currently looks like this {queue}")
+    # If Message is $stop, exit
+    if (message.content.startswith('$stop')):
+      exit()
+    # If Message is $info, output information
+    elif (message.content.startswith('$info')):
+      await message.channel.send(
+        "This bot works by tagging people in the waiterduties announcement channel along with an extra phrase appended to the end to enhance motivation to actually complete waiter duties.\n\n"
+        +
+        "It is designed to work without any input from the discord server admins. It is able to accomplish this by drawing from existing spreadsheet data. If the data is inadequate it will let you know in the waiterlist channel. Please message Ethan Muchnik for any additional technical questions."
+      )
+    # If message Starts with '$' give useful list of commands.
     elif (message.content.startswith('$')):
-      # else:
       if message.author != client.user:
+        await message.channel.send("Here are the commands that can be used")
         await message.channel.send(
-          "You idiot sandwhich. Can't even write a command")
-        await message.channel.send(
-          "($add <tag user>) to add users | ($delete) deletes everyone from the queue"
-        )
+          "($stop) to terminate | ($info) for more information")
 
-keep_alive()
-my_secret = os.environ['DISCORD_BOT_SECRET']
-client.run(my_secret)
+
+if __name__ == "__main__":
+  keep_alive()
+  my_secret = os.environ['DISCORD_BOT_SECRET']
+  client.run(my_secret)
